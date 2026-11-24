@@ -6,7 +6,7 @@ This is a partially completed starter for the Advanced Web Development practical
 
 ## How the game works
 
-The colony advances in **days**. One day passes every eight seconds while the simulation is active. The Pause button stops this clock.
+The colony advances in **days**. One day passes every ten seconds while the simulation is active. The Pause button stops this clock.
 
 Each dwarf can have one of these local assignments:
 
@@ -17,7 +17,9 @@ Each dwarf can have one of these local assignments:
 | Mushroom Farm | 4 food |
 | Unassigned | No production |
 
-At the end of each day, the colony consumes one food for every dwarf. With the initial company of three dwarves, daily meals therefore consume three food. The Shift Ledger shows current assignments and expected production.
+At the end of each day, the colony consumes one food for every dwarf in the hold. With the initial company of three dwarves, daily meals therefore consume three food. A dwarf who is away on an expedition is not counted, because the rations for the journey are taken at departure. The Shift Ledger shows current assignments and expected production.
+
+If the food cannot cover every meal, the stores drop to zero and the hold goes hungry: only the Mushroom Farm produces and no expedition can leave. The hold recovers as soon as a day ends with everyone fed. The Shift Ledger shows a notice for as long as the hold is hungry.
 
 Use the assignment dropdown beside a dwarf to change their work. A changed assignment affects subsequent simulation days.
 
@@ -29,30 +31,36 @@ The shared inventory contains:
 - **Stone**, gathered by miners.
 - **Food**, gathered by farmers and consumed by the company.
 - **Tools**, produced at the forge or discovered on expeditions.
+- **Weapons**, produced at the forge and kept as a colony resource for hostile events.
 
-The starter does not yet give stored tools an additional production bonus or durability rule. They provide a small production-chain foundation that may be expanded by later requirements.
+A stored tool can be equipped to a dwarf in the roster and returned to the stores there. An equipped tool adds one unit of the dwarf's assigned resource per day on any local job (Woodcutting 3 -> 4, Deep Mining 2 -> 3, Mushroom Farm 4 -> 5). A dwarf carries at most one tool. A dwarf who leaves on an expedition keeps the tool, and it can only be returned by hand once the dwarf is back. Tools have no durability.
 
 ### Ember Forge
 
-The forge performs an immediate crafting action:
+Forging is colony work. It needs materials, a free dwarf and time:
 
 ```text
-3 wood + 2 stone -> 1 tool
+3 wood + 2 stone -> 1 tool     (1 day)
+4 wood + 3 stone -> 1 weapon   (2 days)
 ```
 
-Open the **Forge** page and press **Forge tool** to attempt the recipe. A successful craft removes the materials, adds a tool to the shared inventory, and records the result in the Hold Chronicle. Forging is separate from the automatic eight-second job production.
+Open the **Forge** page, choose a crafter and press a recipe button. The materials are taken at once, and the item joins the stores when the stated day is reached. The forge handles one task at a time. The crafter does no local job and cannot leave on an expedition until the task is done. The page shows who is forging and on which day the result completes.
+
+A recipe button is disabled, with the reason next to it, when the materials are missing, the chosen dwarf is busy, the forge is occupied or the hold is hungry.
 
 ### Expeditions
 
-The expedition panel lets you select a dwarf and one destination. Sending an expedition starts an asynchronous request to the local API. The selected dwarf is shown as away while the request is in progress. A successful result returns the dwarf and adds the destination's rewards to the inventory and an unsuccessful result is reported in the chronicle.
+The expedition panel lets you select a dwarf and one destination. A journey lasts a number of days and takes one ration per day from the stores at departure. Without enough rations the expedition cannot start. Only one expedition is under way at a time, and none can leave while the hold is hungry.
+
+The traveller is away until the return day: no local job, no forging, no reassignment. An equipped tool travels with its owner and can only be returned to the stores once they are home. On the return day the game asks the local API what the traveller found. A successful answer brings the dwarf home and adds the rewards to the inventory exactly once. A failed or unanswered request (the game stops waiting after 8 seconds) brings the dwarf home without rewards and is reported in the chronicle. The rations are not refunded.
 
 The starter destinations:
 
-| Destination | Current outcome |
-|---|---|
-| Crystal Cave | 8 stone and 1 tool |
-| The Old Mine | 12 stone and 2 wood |
-| Blocked Pass | A predictable failed expedition |
+| Destination | Days | Current outcome |
+|---|---:|---|
+| Crystal Cave | 1 | 8 stone and 1 tool |
+| The Old Mine | 2 | 12 stone and 2 wood |
+| Blocked Pass | 1 | A predictable failed expedition |
 
 The short delay is deliberate, so that expedition behavior provides a realistic place to reason about promises, loading state, failures, and consistency between worker and resource state.
 
@@ -60,7 +68,7 @@ The short delay is deliberate, so that expedition behavior provides a realistic 
 
 - Three named dwarves with assignments, status, and optional specialization.
 - Woodcutting, mining, and farming jobs.
-- An automatic eight-second simulation tick with pause/resume.
+- An automatic ten-second simulation tick with pause/resume.
 - Shared wood, stone, food, and tool inventories.
 - Daily food consumption.
 - One interactive forge recipe.

@@ -1,17 +1,20 @@
-import type { Resources } from "../types";
+import type { ResourceKey, Resources } from "../types";
 
-const details = {
+const details: Partial<Record<ResourceKey, [string, string]>> = {
   wood: ["🪵", "Timber"],
   stone: ["🪨", "Stone"],
   food: ["🍄", "Rations"],
   tools: ["⚒️", "Tools"],
-} as const;
+  weapons: ["⚔️", "Weapons"],
+};
 
 export function ResourceBar({ resources }: { resources: Resources }) {
   return (
     <section className="resource-bar">
       {Object.entries(resources).map(([key, value]) => {
-        const [icon, label] = details[key as keyof Resources];
+        const detail = details[key as ResourceKey];
+        if (!detail) return null;
+        const [icon, label] = detail;
 
         return (
           <article key={key}>

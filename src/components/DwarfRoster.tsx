@@ -1,5 +1,5 @@
-import { jobLabel } from "../simulation";
-import type { Dwarf, JobType } from "../types";
+import { personStatus, jobLabel } from "../simulation";
+import type { Person, JobType } from "../types";
 
 const jobs: Exclude<JobType, null>[] = [
   "woodcutting",
@@ -8,13 +8,16 @@ const jobs: Exclude<JobType, null>[] = [
 ];
 
 interface Props {
-  dwarves: Dwarf[];
+  people: Person[];
   onAssign: (id: string, job: JobType) => void;
+  availableTools: number;
+  onEquipTool: (id: string) => void;
+  onUnequip: (id: string) => void;
 }
 
-export function DwarfRoster({ dwarves, onAssign }: Props) {
-  const presentDwarves = dwarves.filter(
-    (dwarf) => dwarf.status !== "expedition",
+export function DwarfRoster({ people, onAssign, availableTools, onEquipTool, onUnequip }: Props) {
+  const presentPeople = people.filter(
+    (person) => personStatus(person) !== "expedition",
   ).length;
 
   return (
@@ -25,57 +28,91 @@ export function DwarfRoster({ dwarves, onAssign }: Props) {
           <h2>Holdfolk</h2>
         </div>
         <span>
-          {presentDwarves} / {dwarves.length} present
+          {presentPeople} / {people.length} present
         </span>
       </header>
 
       <div className="dwarf-list">
-        {dwarves.map((dwarf) => {
-          const isAway = dwarf.status === "expedition";
-          const specialty = dwarf.specialty
-            ? `Skilled in ${jobLabel(dwarf.specialty)}`
+        {people.map((person) => {
+          const status = personStatus(person);
+          const isBusyWithTask = person.task !== null;
+          const specialty = person.specialty
+            ? `Skilled in ${jobLabel(person.specialty)}`
             : "Generalist";
+          const equippedLabel =
+            person.equipment === "tool"
+              ? "Equipped: Tool"
+              : person.equipment === "panFlute"
+                ? "Equipped: Pan Flute"
+                : "Equipped: None";
 
           return (
             <article
-              className={isAway ? "dwarf away" : "dwarf"}
-              key={dwarf.id}
+              className={isBusyWithTask ? "dwarf away" : "dwarf"}
+              key={person.id}
             >
               <div className="portrait">
-                {dwarf.icon}
-                <i className={dwarf.status} />
+                {person.icon}
+                <i className={status} />
               </div>
 
               <div className="dwarf-details">
-                <h3>{dwarf.name}</h3>
+                <h3>{person.name}</h3>
                 <p>
-                  {dwarf.title} · {specialty}
+                  {person.title} · {specialty}
                 </p>
+                <p>{equippedLabel}</p>
 
                 <select
-                  value={dwarf.assignment ?? ""}
-                  disabled={isAway}
+                  value={person.task ? "task" : person.assignment ?? ""}
+                  disabled={isBusyWithTask}
                   onChange={(event) =>
                     onAssign(
-                      dwarf.id,
+                      person.id,
                       (event.target.value || null) as JobType,
                     )
                   }
                 >
                   <option value="">Unassigned</option>
+                  {person.task && (
+                    <option value="task">
+                      {person.task.kind === "forge"
+                        ? `Forging until day ${person.task.doneOnDay}`
+                        : `Away until day ${person.task.returnOnDay}`}
+                    </option>
+                  )}
                   {jobs.map((job) => (
                     <option value={job} key={job}>
                       {jobLabel(job)}
                     </option>
                   ))}
                 </select>
+
+                {person.equipment === null && (
+                  <button
+                    type="button"
+                    disabled={isBusyWithTask || availableTools < 1}
+                    onClick={() => onEquipTool(person.id)}
+                  >
+                    Equip tool
+                  </button>
+                )}
+                {person.equipment !== null && (
+                  <button
+                    type="button"
+                    disabled={isBusyWithTask}
+                    onClick={() => onUnequip(person.id)}
+                  >
+                    Return {person.equipment === "tool" ? "tool" : "pan flute"}
+                  </button>
+                )}
               </div>
 
-              <span className="status">{dwarf.status}</span>
+              <span className="status">{status}</span>
             </article>
           );
         })}
       </div>
     </section>
   );
-}
+}

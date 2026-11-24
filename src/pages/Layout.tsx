@@ -1,9 +1,12 @@
 import { NavLink, Outlet } from "react-router";
 import { ResourceBar } from "../components/ResourceBar";
+import { forgeWorker } from "../game/crafting";
 import { useColony } from "../state/ColonyContext";
+import { DAY_MS } from "../state/ColonyProvider";
 
 export function Layout() {
   const { colony, paused, togglePaused } = useColony();
+  const worker = forgeWorker(colony);
 
   return (
     <main>
@@ -44,8 +47,8 @@ export function Layout() {
       <Outlet />
 
       <footer>
-        <span>🔥 Forge: burning</span>
-        <span>Next deep day in ~8 seconds</span>
+        <span>🔥 Forge: {worker ? `${worker.name} is forging` : "idle"}</span>
+        <span>A deep day lasts {DAY_MS / 1000} seconds</span>
         <span>{paused ? "The hold is resting" : "⚙ Simulation active"}</span>
       </footer>
     </main>

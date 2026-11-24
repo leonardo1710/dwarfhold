@@ -6,3 +6,7 @@ vite.config.d.ts
 .env
 *.log
 .DS_Store
+
+# Local files
+_local
+/.idea/

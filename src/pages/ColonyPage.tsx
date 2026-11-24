@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Chronicle } from "../components/Chronicle";
 import { DwarfRoster } from "../components/DwarfRoster";
-import { jobLabel, production } from "../simulation";
+import { DESTINATIONS, expeditionBlocker, traveller } from "../game/expeditions";
+import { dailyProduction, jobLabel, mealsNeeded } from "../simulation";
 import { useColony } from "../state/ColonyContext";
 import type { ResourceKey } from "../types";
 
@@ -9,34 +10,36 @@ export function ColonyPage() {
   const {
     colony,
     activities,
-    expeditionPending,
-    assignDwarf,
+    assignPerson,
     sendExpedition,
+    equipTool,
+    unequipItem,
   } = useColony();
   const [destination, setDestination] = useState("crystal-cave");
-  const [expeditionDwarf, setExpeditionDwarf] = useState("dwarf-3");
+  const [expeditionPerson, setExpeditionPerson] = useState(colony.people[0]?.id ?? "");
+  const blocker = expeditionBlocker(colony, expeditionPerson, destination);
+  const away = traveller(colony);
+  const journey = away?.task?.kind === "expedition" ? away.task : null;
+  const days = DESTINATIONS[destination]?.days ?? 0;
 
-  const dailyOutput = colony.dwarves.reduce<Record<ResourceKey, number>>(
-    (total, dwarf) => {
-      if (dwarf.assignment) {
-        const output = production[dwarf.assignment];
-        Object.entries(output).forEach(([resource, amount]) => {
-          total[resource as ResourceKey] += amount ?? 0;
-        });
-      }
-      return total;
-    },
-    {
-      wood: 0,
-      stone: 0,
-      food: -colony.dwarves.length,
-      tools: 0,
-    },
-  );
+  const gained = dailyProduction(colony);
+  const netFood = gained.food - mealsNeeded(colony);
+
+  const jobGainKey: Record<"woodcutting" | "mining" | "farming", ResourceKey> = {
+    woodcutting: "wood",
+    mining: "stone",
+    farming: "food",
+  };
 
   return (
     <div className="dashboard">
-      <DwarfRoster dwarves={colony.dwarves} onAssign={assignDwarf} />
+      <DwarfRoster
+        people={colony.people}
+        onAssign={assignPerson}
+        availableTools={colony.resources.tools}
+        onEquipTool={equipTool}
+        onUnequip={unequipItem}
+      />
 
       <section className="center-stack">
         <section className="panel production">
@@ -47,6 +50,15 @@ export function ColonyPage() {
             </div>
             <span>updates each day</span>
           </header>
+
+          {colony.hungry && (
+            <div className="net-line">
+              <span className="loss">
+                THE HOLD IS HUNGRY: ONLY FARMING PRODUCES AND NO EXPEDITION
+                LEAVES UNTIL A DAY ENDS WITH EVERYONE FED
+              </span>
+            </div>
+          )}
 
           <div className="job-grid">
             {(["woodcutting", "mining", "farming"] as const).map((job) => (
@@ -61,22 +73,22 @@ export function ColonyPage() {
                 <h3>{jobLabel(job)}</h3>
                 <p>
                   {
-                    colony.dwarves.filter(
-                      (dwarf) => dwarf.assignment === job,
+                    colony.people.filter(
+                      (person) => person.assignment === job && person.task === null,
                     ).length
                   }{" "}
-                  assigned
+                  working
                 </p>
-                <strong>+{Object.values(production[job])[0]} / day</strong>
+                <strong>+{gained[jobGainKey[job]]} / day</strong>
               </article>
             ))}
           </div>
 
           <div className="net-line">
             <span>NET FOOD AFTER MEALS</span>
-            <strong className={dailyOutput.food >= 0 ? "gain" : "loss"}>
-              {dailyOutput.food >= 0 ? "+" : ""}
-              {dailyOutput.food}
+            <strong className={netFood >= 0 ? "gain" : "loss"}>
+              {netFood >= 0 ? "+" : ""}
+              {netFood}
             </strong>
           </div>
         </section>
@@ -95,12 +107,12 @@ export function ColonyPage() {
           <label>
             Scout
             <select
-              value={expeditionDwarf}
-              onChange={(event) => setExpeditionDwarf(event.target.value)}
+              value={expeditionPerson}
+              onChange={(event) => setExpeditionPerson(event.target.value)}
             >
-              {colony.dwarves.map((dwarf) => (
-                <option key={dwarf.id} value={dwarf.id}>
-                  {dwarf.name}
+              {colony.people.map((person) => (
+                <option key={person.id} value={person.id} disabled={person.task !== null}>
+                  {person.name}
                 </option>
               ))}
             </select>
@@ -112,21 +124,28 @@ export function ColonyPage() {
               value={destination}
               onChange={(event) => setDestination(event.target.value)}
             >
-              <option value="crystal-cave">Crystal Cave</option>
-              <option value="old-mine">The Old Mine</option>
-              <option value="blocked-pass">Blocked Pass</option>
+              {Object.entries(DESTINATIONS).map(([id, place]) => (
+                <option key={id} value={id}>
+                  {place.label} ({place.days} {place.days === 1 ? "day" : "days"})
+                </option>
+              ))}
             </select>
           </label>
 
           <button
-            disabled={expeditionPending}
-            onClick={() => sendExpedition(expeditionDwarf, destination)}
+            disabled={blocker !== null}
+            onClick={() => sendExpedition(expeditionPerson, destination)}
           >
-            {expeditionPending ? "Beyond the gate…" : "Send expedition"}
+            {away ? "Beyond the gate…" : "Send expedition"}
           </button>
           <p>
-            A result returns in one request. The selected dwarf is unavailable
-            while travelling.
+            {away && journey
+              ? `${away.name} is away at ${DESTINATIONS[journey.destination]?.label}. Back on day ${journey.returnOnDay}.`
+              : blocker ?? `The journey takes ${days} ${days === 1 ? "ration" : "rations"} from the stores at departure.`}
+          </p>
+          <p>
+            A traveller keeps an equipped tool and cannot work, forge or be
+            reassigned until home.
           </p>
         </section>
 
@@ -134,4 +153,4 @@ export function ColonyPage() {
       </aside>
     </div>
   );
-}
+}

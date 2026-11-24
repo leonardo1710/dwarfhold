@@ -10,12 +10,14 @@ export function Chronicle({ activities }: { activities: Activity[] }) {
         </div>
       </header>
 
-      {activities.map((activity) => (
-        <article className={activity.tone ?? ""} key={activity.id}>
-          <span>DAY {activity.day}</span>
-          <p>{activity.message}</p>
-        </article>
-      ))}
+      <div className="chronicle-list">
+        {activities.map((activity) => (
+          <article className={activity.tone ?? ""} key={activity.id}>
+            <span>DAY {activity.day}</span>
+            <p>{activity.message}</p>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
